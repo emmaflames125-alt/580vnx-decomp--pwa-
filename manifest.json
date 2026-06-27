@@ -1,0 +1,27 @@
+{
+  "name": "Decompiler fx-580VN X · Bashame's ROP Tools",
+  "short_name": "Decompiler580VNx",
+  "description": "Decompiler for fx-580VN X calculator - ROP Tools by Bashamee. Supports detailed and simple output modes with advanced settings.",
+  "start_url": "./index.html",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#0a0d12",
+  "theme_color": "#0a0d12",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ],
+  "scope": "./",
+  "lang": "en",
+  "categories": ["developer tools", "utilities"]
+}

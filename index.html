@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>Decompiler fx-580VN X · Bashame's ROP Tools</title>
+    <!-- PWA Support -->
+    <link rel="manifest" href="manifest.json">
+    <meta name="theme-color" content="#0a0d12">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="Decompiler fx-580VN X">
+    <meta name="description" content="Decompiler for fx-580VN X calculator firmware / ROP chain analysis. Part of Bashame's ROP Tools.">
+    <style>
+        :root {
+            /* 🌸 Pink Theme (Nature) */
+            --bg-body: #dcebdc;
+            --bg-card: #f2dae2;
+            --bg-header: #c1dec3;
+            --bg-toolbar: #edbccc;
+            --bg-input: #fbfbfb;
+            --bg-output: #fbfbfb;
+            --text-main: #245728;
+            --text-muted: #7a1c4b;
+            --accent: #c42962;
+            --border-color: #9dcc9f;
+            --btn-bg: #7abf7d;
+            --btn-hover: #63ad66;
+            --hex-badge-bg: #ecc0cf;
+            --hex-badge-text: #7a1c4b;
+            --label-color: #c42962;
+            --gadget-color: #2d6b31;
+            --data-color: #176ea6;
+            --card-border: #7abf7d;
+            --shadow-color: rgba(56, 130, 60, 0.15);
+        }
+
+        .theme-minimal {
+            /* 🌙 Dark Theme (Minimal / Cyber) - Mặc định */
+            --bg-body: #0a0d12;
+            --bg-card: #11161f;
+            --bg-header: #0c1017;
+            --bg-toolbar: #0e121b;
+            --bg-input: #1a212c;
+            --bg-output: #070a0f;
+            --text-main: #ffffff;
+            --text-muted: #8b9eb3;
+            --accent: #8bcb8b;
+            --border-color: #252d3a;
+            --btn-bg: #1e2632;
+            --btn-hover: #2f3a48;
+            --hex-badge-bg: #1e2a3a;
+            --hex-badge-text: #ffffff;
+            --label-color: #e8c86a;
+            --gadget-color: #8bcb8b;
+            --data-color: #7aa2f7;
+            --card-border: #252d3a;
+            --shadow-color: rgba(0,0,0,0.6);
+        }
+
+        * { box-sizing: border-box; }
+        body {
+            background: var(--bg-body);
+            color: var(--text-main);
+            font-family: 'Segoe UI', 'Fira Code', 'Cascadia Code', monospace;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background 0.3s ease;
+        }
+        
+        .card {
+            max-width: 1300px;
+            width: 100%;
+            background: var(--bg-card);
+            border-radius: 32px;
+            box-shadow: 0 20px 35px var(--shadow-color);
+            border: 2px solid var(--card-border);
+            position: relative;
+            transition: all 0.3s ease;
+            overflow: visible; 
+        }
+        
+        .header {
+            padding: 18px 24px;
+            background: var(--bg-header);
+            border-bottom: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 12px;
+            border-top-left-radius: 30px; 
+            border-top-right-radius: 30px;
+        }
+        .logo-area { display: flex; align-items: center; gap: 12px; }
+        .header h1 { margin: 0; font-size: 1.5rem; font-weight: 500; color: var(--text-main); }
+        .credit { color: var(--text-muted); font-size: 1rem; font-family: monospace; font-weight: 500; }
+        .toolbar {
+            display: flex; flex-wrap: wrap; gap: 12px; padding: 14px 24px;
+            background: var(--bg-toolbar); border-bottom: 1px solid var(--border-color); align-items: center;
+            position: relative;
+            z-index: 10;
+        }
+        .addr-input {
+            background: var(--bg-input); border: 1px solid var(--border-color);
+            border-radius: 60px; padding: 6px 12px; color: var(--text-main);
+            font-family: monospace; font-size: 0.9rem; width: 100px; text-align: center;
+        }
+        button {
+            background: var(--btn-bg); border: none; padding: 8px 18px; border-radius: 60px;
+            font-family: inherit; font-size: 0.8rem; font-weight: 500; color: #ffffff;
+            cursor: pointer; transition: 0.2s ease;
+        }
+        button:hover { background: var(--btn-hover); transform: translateY(-1px); }
+        button:active { transform: translateY(1px); }
+        
+        .mode-switch {
+            margin-left: auto; background: rgba(0,0,0,0.1);
+            display: flex; gap: 6px; padding: 4px 8px; border-radius: 60px;
+        }
+        .mode-btn { background: transparent; padding: 6px 14px; border-radius: 40px; color: var(--text-muted); }
+        .mode-btn.active { background: var(--accent); color: white; }
+
+        .theme-minimal .mode-btn.active { background: #2a3a4a; color: var(--accent); border: 1px solid #3a4a5a; }
+        .theme-minimal .clear-btn { color: #d1d5db; background: rgba(220, 38, 38, 0.15); border: 1px solid rgba(220, 38, 38, 0.3); }
+        .theme-minimal .clear-btn:hover { background: rgba(220, 38, 38, 0.3); border-color: rgba(220, 38, 38, 0.5); }
+        .theme-minimal .undo-btn { color: #d1d5db; background: rgba(217, 119, 6, 0.15); border: 1px solid rgba(217, 119, 6, 0.3); }
+        .theme-minimal .undo-btn:hover { background: rgba(217, 119, 6, 0.3); border-color: rgba(217, 119, 6, 0.5); }
+
+        .theme-nature .clear-btn { background: #d32f2f; color: #fff; }
+        .theme-nature .undo-btn { background: #f57c00; color: #fff; }
+
+        .action-btn {
+            background: var(--btn-bg); color: #fff; border: 1px solid var(--border-color);
+            padding: 3px 8px; border-radius: 8px; font-family: inherit; font-size: 10px;
+            cursor: pointer; margin-left: 6px; transition: 0.2s;
+        }
+        .action-btn:hover { background: var(--btn-hover); }
+        .action-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+        .theme-minimal .action-btn { color: var(--text-main); }
+        .theme-minimal .action-btn.active { background: rgba(139, 203, 139, 0.2); color: var(--accent); border-color: var(--accent); }
+
+        .settings-btn { background: rgba(0,0,0,0.1); color: var(--text-main); position: relative; }
+        .settings-dropdown {
+            display: none; position: absolute; top: calc(100% + 6px); right: 0;
+            background: var(--bg-card); border: 1px solid var(--border-color); border-radius: 16px;
+            padding: 10px 0; min-width: 250px; z-index: 9999;
+            box-shadow: 0 8px 24px var(--shadow-color);
+        }
+        .settings-dropdown.show { display: block; }
+        .settings-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 7px 16px; font-size: 0.8rem; color: var(--text-main); cursor: pointer;
+            gap: 12px; white-space: nowrap;
+        }
+        .settings-item:hover { background: var(--bg-input); }
+        .settings-item .toggle-pill {
+            width: 34px; height: 18px; border-radius: 9px; background: #606d80;
+            position: relative; transition: 0.2s; flex-shrink: 0;
+        }
+        .settings-item .toggle-pill.on { background: var(--accent); }
+        .settings-item .toggle-pill::after {
+            content: ''; position: absolute; width: 14px; height: 14px;
+            border-radius: 50%; background: #fff; top: 2px; left: 2px; transition: 0.2s;
+        }
+        .settings-item .toggle-pill.on::after { left: 18px; }
+        .settings-divider { height: 1px; background: var(--border-color); margin: 6px 0; }
+        .settings-addr-row { display: flex; align-items: center; gap: 6px; padding: 5px 16px; font-size: 0.8rem; color: var(--text-main); }
+        .settings-addr-row input {
+            background: var(--bg-input); border: 1px solid var(--border-color); border-radius: 30px;
+            padding: 3px 8px; color: var(--text-main); font-family: monospace; font-size: 0.8rem;
+            width: 75px; text-align: center;
+        }
+        .settings-label { color: var(--text-muted); font-size: 0.75rem; }
+        .addr-tag { font-size: 0.7rem; color: var(--text-muted); }
+        
+        textarea {
+            width: 100%; background: var(--bg-output); border: 1px solid var(--border-color);
+            color: var(--text-main); font-family: 'Fira Code', monospace; font-size: 12px;
+            padding: 16px; resize: vertical; border-radius: 20px; outline: none;
+        }
+        .input-container, .output-container { padding: 8px 24px 24px 24px; position: relative; z-index: 1; }
+        label { font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; color: var(--text-muted); display: block; margin-bottom: 8px; }
+        .output-list {
+            background: var(--bg-output); border: 1px solid var(--border-color); border-radius: 20px;
+            padding: 12px 16px; min-height: 280px; max-height: 520px; overflow-y: auto;
+            font-family: 'Fira Code', monospace; font-size: 12px; color: var(--text-main); white-space: pre-wrap;
+        }
+        .gadget-line { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 12px; padding: 6px 4px; border-bottom: 1px dashed var(--border-color); font-family: 'Fira Code', monospace; font-size: 12px; }
+        .hex-badge {
+            background: var(--hex-badge-bg); border-radius: 40px; padding: 3px 12px; font-weight: 600;
+            color: var(--hex-badge-text); font-size: 12px; border: 1px solid var(--border-color);
+        }
+        .addr { color: #f5d67b; font-weight: 600; background: rgba(0,0,0,0.4); padding: 2px 8px; border-radius: 20px; font-size: 11px; }
+        .gadget-name { color: var(--gadget-color); font-weight: 500; font-size: 12px; }
+        .gadget-name-unknown { color: #d32f2f; font-size: 12px; }
+        .theme-minimal .gadget-name-unknown { color: #f87171; }
+        .data-name { color: var(--data-color); font-weight: 500; font-size: 12px; white-space: pre-wrap; }
+        .label-name { color: var(--label-color); font-weight: 600; font-size: 13px; }
+        .location { margin-left: auto; color: var(--text-muted); font-size: 11px; font-family: monospace; background: rgba(0,0,0,0.1); padding: 2px 8px; border-radius: 20px; }
+        .status-bar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; flex-wrap: wrap; gap: 8px; }
+        .status { font-size: 0.8rem; color: var(--text-main); padding: 6px 12px; background: var(--bg-input); border-radius: 40px; font-family: monospace; display: inline-block; }
+        .stats { font-size: 0.75rem; color: var(--text-muted); background: var(--bg-input); padding: 4px 12px; border-radius: 40px; font-family: monospace; }
+        
+        .label-edit-input {
+            font-family: var(--font-mono); font-size: 12px; background: var(--bg-input);
+            color: var(--accent); border: 1px solid var(--accent); border-radius: 4px; padding: 2px 4px;
+        }
+    </style>
+</head>
+<body class="theme-minimal">
+<div class="card">
+    <div class="header">
+        <div class="logo-area">
+            <h1>⚙️ Decompiler fx-580VN X · Bashamee's ROP Tools</h1>
+        </div>
+        <div class="credit">Developed by @Bashamee</div>
+    </div>
+    <div class="toolbar">
+        <button id="decompileBtn">⚡ DECOMPILE</button>
+        <button id="pasteBtn" class="paste-btn">📋 PASTE</button>
+        <button id="copyBtn" class="copy-btn">📄 COPY OUTPUT</button>
+        <button id="undoBtn" class="undo-btn" style="display:none;">↩️ UNDO</button>
+        <button id="clearBtn" class="clear-btn">🗑 CLEAR</button>
+        
+        <div class="mode-switch">
+            <button id="modeDetailBtn" class="mode-btn active">🎨 Detailed</button>
+            <button id="modeSimpleBtn" class="mode-btn">📄 Simple</button>
+        </div>
+        <div style="position:relative; margin-left:auto; z-index: 999;">
+            <button id="settingsBtn" class="settings-btn">⚙️ Settings ▾</button>
+            <div class="settings-dropdown" id="settingsDropdown">
+                <div class="settings-item" id="settingTheme">
+                    <span>🌸 Nature Theme</span>
+                    <span class="toggle-pill" id="pillTheme"></span>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-addr-row">
+                    <span class="settings-label">dest</span>
+                    <input type="text" id="startAddrInput" value="d730" placeholder="d730">
+                    <span class="addr-tag">runtime</span>
+                </div>
+                <div class="settings-addr-row">
+                    <span class="settings-label">src</span>
+                    <input type="text" id="backupAddrInput" value="e9e0" placeholder="e9e0">
+                    <span class="addr-tag">backup</span>
+                </div>
+                <div class="settings-addr-row">
+                    <span class="settings-label">Indent</span>
+                    <input type="number" id="indentInput" value="4" style="width:50px;" min="0" max="16">
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item" id="settingLabels">
+                    <span>🏷️ Labels (adr_of)</span>
+                    <span class="toggle-pill on" id="pillLabels"></span>
+                </div>
+                <div class="settings-item" id="settingAutoPopData">
+                    <span>📥 Auto Parse POP Data</span>
+                    <span class="toggle-pill on" id="pillAutoPopData"></span>
+                </div>
+                <div class="settings-item" id="settingAutoPop">
+                    <span>📦 Auto Group POP</span>
+                    <span class="toggle-pill on" id="pillAutoPop"></span>
+                </div>
+                <div class="settings-item" id="settingNames">
+                    <span>🗂️ Translate Names</span>
+                    <span class="toggle-pill on" id="pillNames"></span>
+                </div>
+                <div class="settings-item" id="settingAddrs">
+                    <span>📍 Show RAM addresses</span>
+                    <span class="toggle-pill on" id="pillAddrs"></span>
+                </div>
+                <div class="settings-divider"></div>
+                <div class="settings-item" id="settingHexMode" style="gap:6px;">
+                    <span>🔢 Format:</span>
+                    <span id="hexModeLabel" style="color:var(--accent);font-family:monospace;font-size:0.8rem;">hex</span>
+                    <span class="toggle-pill" id="pillHexMode" style="margin-left:auto;"></span>
+                    <span id="hexModeLabel2" style="color:var(--text-muted);font-family:monospace;font-size:0.8rem;">0x</span>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="input-container">
+        <label>📟 PROGRAM HEX</label>
+        <textarea id="hexInput" rows="5" placeholder="d0 08 33 30 e0 a0 30 30 60 8c 30 30 ..."></textarea>
+    </div>
+    <div class="output-container">
+        <label>🔧 ASSEMBLY OUTPUT</label>
+        <div class="status-bar">
+            <div class="status" id="statusMsg">✅ Ready</div>
+            <div class="stats" id="statsMsg">byte: 0 | items: 0</div>
+        </div>
+        <div id="outputList" class="output-list"></div>
+    </div>
+</div>
+
+<script>
+    const outputListEl = document.getElementById('outputList');
+    const undoBtn = document.getElementById('undoBtn');
+
+    // --------------------------------------------------------------
+    // LOCAL STORAGE & STATE VARIABLES
+    // --------------------------------------------------------------
+    let currentMode = "detail";
+    let currentItems = [];
+    let historyStack = [];
+    let currentByteCount = 0;
+    let currentStartAddrDest = 0xd730;
+    let currentStartAddrSrc = 0xe9e0;
+    
+    // Toggles with LocalStorage
+    let isNatureTheme = localStorage.getItem('isNatureTheme') === 'true'; 
+    let labelMode = localStorage.getItem('labelMode') !== 'false'; 
+    let autoPopData = localStorage.getItem('autoPopData') !== 'false'; 
+    let autoGroupPop = localStorage.getItem('autoGroupPop') !== 'false'; 
+    let translateNames = localStorage.getItem('translateNames') !== 'false'; 
+    let showAddrs = localStorage.getItem('showAddrs') !== 'false'; 
+    let hexMode = localStorage.getItem('hexMode') || 'hex'; 
+
+    let customLabels = new Map(JSON.parse(localStorage.getItem('customLabels') || '[]'));
+    
+    // Lưu các khoảng Shift Label động
+    window.currentLabelShifts = {};
+
+    function saveState() {
+        localStorage.setItem('isNatureTheme', isNatureTheme);
+        localStorage.setItem('labelMode', labelMode);
+        localStorage.setItem('autoPopData', autoPopData);
+        localStorage.setItem('autoGroupPop', autoGroupPop);
+        localStorage.setItem('translateNames', translateNames);
+        localStorage.setItem('showAddrs', showAddrs);
+        localStorage.setItem('hexMode', hexMode);
+        localStorage.setItem('customLabels', JSON.stringify(Array.from(customLabels.entries())));
+        
+        localStorage.setItem('hexInput', document.getElementById('hexInput').value);
+        localStorage.setItem('startAddr', document.getElementById('startAddrInput').value);
+        localStorage.setItem('backupAddr', document.getElementById('backupAddrInput').value);
+        localStorage.setItem('indentStr', document.getElementById('indentInput').value);
+    }
+
+    // --------------------------------------------------------------
+    // DATABASE (gadgets + labels)
+    // --------------------------------------------------------------
+    const addrToName = new Map();
+
+    function addEntry(hexAddr, name) {
+        let num = parseInt(hexAddr, 16);
+        if (!isNaN(num) && !addrToName.has(num)) addrToName.set(num, name);
+    }
+
+    function normalizeName(name) {
+        return name
+            .replace(/\s*=\s*/g, '=')
+            .replace(/\s*\+=\s*/g, '+=')
+            .replace(/\s*-=\s*/g, '-=')
+            .replace(/\s*>>\s*/g, '>>')
+            .replace(/\s*<<\s*/g, '<<')
+            .replace(/\s*,\s*/g, ',')
+            .replace(/\s+/g, ' ')
+            .trim();
+    }
+
+    const gadgetList = [
+        ["09fa8","setlr"],["308d0","setlr_pc"],["0a05c","DI,RT"],
+        ["23f9e","calc_checksum_set_f004"],["23fa6","calc_checksum_no_set_f004"],
+        ["23fad","calc_checksum_0"],["23fc0","calc_checksum_1"],["23fd4","calc_checksum_2"],
+        ["23fea","calc_checksum_3"],["23f21","pr_checksum"],["09ca0","[er8]+=er2,pop xr8"],
+        ["2702e","sp=er14,pop er14,rt"],["12da6","sp=er14,pop qr8"],
+        ["23f82","sp=er14,pop qr8,pop qr0"],["20d60","sp=er14,pop er14"],
+        ["21f74","sp=er6,pop er8"],["09820","sp=er14,pop xr12"],["13aac","sp=er14,pop qr8,pop er6"],
+        ["0ac34","er14=sp,rt"],["0a8a8","nop"],["13b66","er0+=er0,er0+=er2,er8=[er0]"],
+        ["13b9a","er0+=er0,er2+=er0,er0=[er2]"],
+        ["1ec0c","pop ea"],["27030","pop er14,rt"],["13332","pop er0,rt"],["18974","pop er2"],
+        ["250a6","pop er4"],["0a8a6","pop er8"],["16eca","pop er12,rt"],["17bda","pop qr0"],
+        ["12da8","pop qr8"],["177da","pop r0"],["1844a","pop r8"],["1622e","pop xr0"],
+        ["1d040","pop xr4"],["183a6","pop xr8"],["0d516","pop er10"],["0d04c","pop r12"],
+        ["12602","pop er0"],["21636","pop er12"],["15c78","pop er14"],["13ab0","pop er6"],
+        ["1dcf6","pop er6,rt"],["20730","pop xr12"],["16d88","pop er4,rt"],["16d7c","pop er8,rt"],
+        ["17072","pop qr0,rt"],["14c50","pop qr8,rt"],["15fc0","pop r4"],["16210","pop r4,rt"],
+        ["14c98","pop r9"],["10e5a","pop xr12,rt"],["1d972","pop xr4,rt"],["0e5e2","pop xr8,rt"],
+        ["093b8","pop er2,pop er8,er0=er2,rt"],["1893a","pop er0,pop er4"],
+        ["16754","pop er4,pop er8"],["201f6","pop er4,pop er12,pop r9"],
+        ["14bd8","er0+=er4,rt"],["13b80","er4+=er0,r8=r8,rt"],["21ba8","er0+=er8,rt"],
+        ["21bae","er2+=er8,rt"],["2fa0c","er0+=er2,rt"],["16078","er0+=1,rt"],
+        ["09ce4","r0+=1,rt"],["14fcc","er0+=er6,er10=er0,rt"],["20838","and r0,0f"],
+        ["24008","er6=er0,er0=er8,pop qr8"],["16170","er8=er0"],
+        ["0ea70","er2=er0,er0=er2,pop er8,rt"],["14bd6","er2=er0,er0+=er4,rt"],
+        ["0bf30","er0=er2,rt"],["2470a","er0=er4,pop er4"],["2f786","er0=er8,pop er8,rt"],
+        ["0a246","er0=er8,pop er8"],["15386","er0=er8"],["1edea","er0=er6,pop er8,pop xr4,rt"],
+        ["28c86","er2=er0,r0=r4,r1=0,pop xr4,rt"],["2ffc0","r0=r5,pop er4"],
+        ["1abb0","r0=r2=0"],["1abb2","r0=r2"],["15fde","r2=r0,pop er0"],
+        ["164e4","r2=r0,pop r6,pop er12"],["177b4","r2=0,r7=4"],["1ca8a","r0=0"],
+        ["1DD54","r0=0,rt"],["1DD58","r0=1,rt"],["18978","r0=0,pop er2"],["2ac30","r1=0,rt"],
+        ["16df2","r5=0,rt"],["17b32","er14=er0,pop xr0"],["0ac7c","er0=er12,pop er12,rt"],
+        ["13916","er10=er2,rt"],["20b52","er0=er10,pop xr8"],["1e60c","er0=1,rt"],
+        ["180d2","er2=0,er4=0,er6=0,er8=1,rt"],["09caa","er2=0,r0=2,[er8]=er2,pop xr8"],
+        ["0a88a","er2=1,r0=r2,rt"],["09c9e","r0=0,[er8]+=er2,pop xr8"],
+        ["27e7c","r2=1,r0=r2,pop er4,pop er8,rt"],["27e92","r0=r1,rt"],
+        ["14fce","er10=er0,rt"],["283fe","er2=0,er0=er2,pop er8"],["140e4","er0=er6,er2=er12"],
+        ["16e18","r4=0"],["0eda0","er0=0,rt"],
+        ["16d9a","[er2]=er0,r2=0,pop er4,rt"],["139d8","[er0]=er2,rt"],["208b2","[er0]=r2,rt"],
+        ["203D2","[er0]=r2"],["176d4","[er2]=r0,r2=0"],["09ca4","[er8]=er2,pop xr8"],
+        ["13330","[er4]=er0,pop er0,rt"],["1a588","[ea]=qr0"],["22226","[er12]=er14,pop xr4,pop qr8"],
+        ["1332a","[er4]+=1,rt"],["13336","[er4]-=1,rt"],["19e5a","er8=[ea+],rt"],
+        ["16614","[er2]=r0,r0=0"],
+        ["16d7a","er4=[er8],pop er8,rt"],["13b9e","er0=[er2],r2=9,rt"],["13b6a","er8=[er0],rt"],
+        ["09e4a","r0=[er2]"],["18274","r0=[er0]"],["298dc","er0=[er0],pop xr8,rt"],
+        ["09fdc","r0=[ea],rt"],["21f72","sp=[er8],pop er8"],
+        ["1c2c0","qr0=[ea],lea D002H,[ea]=qr0"],["1c64a","er6=[ea]"],
+        ["09e8a","er0-=er2,rt"],["29a40","er0-=er12,pop er8,pop er12,rt"],["09e98","r0-=1,rt"],
+        ["0ac5a","r0-=r8,pop er8,rt"],
+        ["122d4","or r0,r1"],["1a5c2","or qr0,qr8"],
+        ["20830","r0>>4,rt"],["1bb28","qr0>>4,rt"],["1bb5c","r0<<4,rt"],["1bb70","r1<<4,rt"],
+        ["1bb5a","er0<<4,rt"],["1bb56","xr0<<4,rt"],["1bb4e","qr0<<4,rt"],
+        ["0c790","er0-er2_gt,r0=0|r0=1,rt"],["09ae6","er0-er2_eq,r0=1|r0=0,rt"],
+        ["0c7a8","er2-er0_gt,r0=0|r0=1,rt"],["2abda","er0-er2_le,er0=er2,rt"],
+        ["297e2","er8-er0_lt,pop xr8"],["091ec","r0-0_lt,rt"],["091f4","r1-0_lt,rt"],
+        ["14bd4","er0*=r2,er2=er0,er0+=er4,rt"],["14fca","er0*=r2,er0+=er6,er10=er0,rt"],
+        ["28C54","er0/=r2,rt"],
+        ["160c2","sp+=20"],["162d4","sp+=10"],["168f0","sp+=2"],["1d3c8","sp+=4"],
+        ["09932","sp+=6,pop qr8"],["13184","sp+=50,pop qr8"],["131f6","sp+=20,pop qr8"],
+        ["13320","sp+=30,pop qr8"],["15c76","sp+=30,pop er14"],["1d3f2","sp+=2,r0=0"],
+        ["1d798","sp+=20,pop xr12"],["21634","sp+=10,pop er12"],["21b9c","sp+=60,pop xr8"],
+        ["284ac","sp+=4,pop xr8"],["08f74","sp+=64,pop er6,pop qr8"],
+        ["098ec","sp+=4,pop qr8,pop xr4"],["13412","sp+=40,pop qr8,pop xr4"],
+        ["138a6","sp+=60,pop qr8,pop xr4"],["18266","sp+=50,pop qr8,pop xr4"],
+        ["193a0","sp+=50,pop xr4,pop qr8"],["202b0","sp+=120,pop qr8,pop xr4"],
+        ["20660","sp+=2,pop xr4,pop qr8"],["21b9a","sp+=120,pop xr8"],
+        ["26b12","sp+=2,r0=1,pop er8"],["2122a","sp+=32,r2=r0,pop xr8"],
+        ["18614","?r0=00"],["33030","brk"],["0d71c","[ea]+=1,r0=3"],["2c81e","[ea]-=1,pop xr4"],
+        ["24836","B LEAVE"],
+        ["09450","BL memcpy,pop er0"],["203CC","BL strcpy"],["203E0","BL strcat"],
+        ["09D3A","BL memset,pop er2"],["23CAC","BL delay,pop xr0"],["20C40","BL line_print"],
+        ["23F62","BL printline"],["24004","BL hex_byte,er6=er0,er0=er8,pop qr8"],
+        ["20A50","BL smart_strcpy,pop er8"],["0A052","BL zero_KO"],["28AC2","BL line_draw"],
+        ["09AD4","BL render.ddd4"],["2B2BA","memcpy_auto_jmp"],["08f80","line_print"],
+        ["25c1c","getkeycode"],["09E96","[ea+]=r0,r0-=1,bne"],["09C20","cmp_ea"],
+        ["17922","calc_func"],["16082","cvt_hex_1"],["160f8","cvt_hex_2"],
+        ["10f20","memcpy_length_rn/8"],["1700e","memcpy_length_rn/2,pop qr0"],["13324","pop pc"],
+        ["0E5C8","strcpy"],["2EDA0","strcat"],["26FFA","memcpy"],["0A8AA","memmove"],
+        ["29A2C","strlen"],["1EB94","memset"],["203C2","smart_strcpy"],["203D6","smart_strcat"],
+        ["203B8","smart_strlen_n"],["2086C","basen_base_print"],["23DCC","smallprint"],
+        ["08F7C","line_print.col_0"],["08F7E","line_print"],["23DC8","printline"],
+        ["09470","render.e3d4"],["0947C","render.ddd4"],["09848","render_bitmap"],
+        ["09D34","memzero"],["26086","reset_routine"],["24BD6","get_string_constant"],
+        ["08C0C","fill_screen"],["08F02","str_decompress_print"],["09F3C","delay"],
+        ["0A1CE","_start"],["293D8","main"],["09440","buf1_to_buf2"],["09458","buf2_to_buf1"],
+        ["2AB26","byte_strlen_n"],["23C4C","diagnostic_mode"],["0ACB6","f_0ACB6"],
+        ["0AD92","diagnostic_wait_key"],["0E826","check_any_key_pressed__"],["23CB4","diagnostic"],
+        ["24344","diag_scr_888_ws"],["23DD6","diag_scr_fill_ws"],["23DDA","waitshift_striped"],
+        ["23DDE","waitshift"],["23DE4","diag_scr_ckb1_ws"],["23E40","diag_scr_ckb2_ws"],
+        ["23E6A","diag_scr_version"],["23E92","diag_print_ver"],["23EEE","diag_checksum"],
+        ["23F8A","store_reg_to_stack"],["23EC8","diag_print_pd"],["23F9A","diag_calc_checksum"],
+        ["09A24","pd_value"],["24010","hex_byte"],["16EAE","byte_hex"],["09938","hex_to_dec"],
+        ["2541A","diag_serial_num"],["10E5E","get_serial_num"],["23D5A","diag_check_key"],
+        ["2641A","diag_contrast"],["2C58A","diag_8_keytest"],["1F24E","getscancode"],
+        ["2F5EA","getkey"],["25C1A","getkeycode"],["29892","cvt_key"],["0A0E0","setsfr"],
+        ["19808","byte_to_bcd"],["19832","bcd_to_byte"],["08E62","line_draw"],["091FC","pixel_draw"],
+        ["090D2","draw_glyph"],["2EDC8","line_print__call__"],["0996C","str_decompress_print__call__"],
+        ["099C2","str_decompress_print__call1__"],["0904E","char_print_1byte"],["09056","char_print"],
+        ["09238","char_get_14"],["09318","char_get_l14"],["0A16A","zero_KO"],["09DE6","assign_var"],
+        ["08C60","buffer_clear"],["0AC30","ENTER"],["0AC38","LEAVE"],["224DE","LEAVE1"],
+        ["22D66","LEAVE2"],["13D92","LEAVE3"],["2110A","LEAVE4"],["1652C","num_add"],
+        ["16538","num_sub"],["16544","num_mul"],["16550","num_div"],["1D24A","num_add_1"],
+        ["1D236","num_sub_1"],["1D272","num_mul_1"],["1D25E","num_div_1"],["20C46","num_output_print"],
+        ["1D950","num_fromdigit"],["1DC2E","num_frombyte"],["1D898","num_invalid__"],
+        ["1DBE2","num_trunc__"],["1DAF0","num_mulxp__"],["1391A","num_random"],["13A20","num_randint"],
+        ["139D2","num_normalize"],["1DC8A","num_to_byte"],["1ED58","num_to_hex"],["279B6","num_to_str"],["1DCE4","num_cpy"],
+        ["1D902","num_cmp"],["16844","num_sin"],["1684E","num_cos"],["168E4","num_tan"],
+        ["2AD4C","display_menu"],["093D2","draw_byte"],
+        ["2045c","pop xr4,pop xr12"],["1c696","[ea+] = er0"],
+        ["13622","pop qr8"], ["1fcf4","pop er4"], ["09d3e","pop er2"],
+        ["10e80","pop ea, r6-=1_ne,call 10e6e|pop xr4"], ["1216a","pop er0"],
+        ["17b34","pop xr0"], ["1622e","pop xr0"], ["08e64","line_draw"],
+    ["13344","calc_func_verify"],["2F210","input_func"],["2E234","mode_calc"],
+    ["1ED56","num_to_hex"],["1A6E4","setlr,er0 = 0,r2 = f3"],["23C90","pop qr0"],
+    ["09E68","pop xr0"],["0E232","er0 = er8,pop er8"],["140E6","er2 = er12"],
+    ["13AD8","er0 = er10,bl num_cpy"],["17BFA","er2 = er14, r1 = 3"],["09E48","er2 += er0,r0 = [er2]"],
+    ["2245C","r1 = 0,pop er12"],["16070","xr0 = -xr0,rt"],["17BD8","[ea] = xr4"],
+    ["17BF8","[ea] = xr12, er2 = er14, r1 = 3"],["17CAE","[ea+] = qr0, [ea+] = er8, rt"],["17E7A","r10 = r11"],
+    ["17E7D","r11 = 0"],["2245A","r0 = r12, r1 = 0, pop er12"],["1DF54","er2 = er0, er0 += er0, er0 += er2, er6 += er0"],
+    ["1DF9A","r5 += 1"],["27FCE","r7 = 0"],["09FF8","var_m = r0, rt"],
+    ["0A06A","[ea+] = er0, [ea] = r0, rt"],["0A07A","[ea+] = er2, [ea] = r2, rt"],["0A0A8","rt"],
+    ["0A0DA","setnormal"],["0A0DC","setdelay"],["0A11C","setcursor"],
+    ["0A562","r0 = r4, pop er4"],["0A594","er4 += 1"],["0A598","er8 += 1"],
+    ["0A908","er0 = er8, pop er4, pop er12, pop xr8, sp = er14, pop er14, rt"],["0A930","r0 >> 2"],["0AA87","r10 = r6, r9 = r0"],
+    ["0AA88","r9 = r0"],["0AA8A","r6 += 1"],["0AC58","r0 = r2, r0 -= r8"],
+    ["0AC7A","er12 = 0"],["0ACFA","r6 = 0"],["0B4E0","r5 = r0"],
+    ["0B684","er4 = er0"],["0BDA2","er4 = er8, er6 = er2"],["0BDA5","er6 = er2"],
+    ["0BE30","er8 -= 1"],["0BF2E","er2 += 1"],["1A5D0","or r7, r15"],
+    ["1A610","[ea+] = xr4"],["28C5A","er8 = er0, er10 = er2"],["28C5C","er10 = er2"],
+    ["272B8","r10 = 0"],["1C64C","qr8 = [ea]"],["279B8","num_to_str"],["1DC8C","num_to_byte"],["1DC30","num_frombyte"]
+
+    ];
+
+    for (let g of gadgetList) { addEntry(g[0], normalizeName(g[1])); }
+
+    const specialNoPopGadgets = new Set([
+        "sp=er14,pop er14,rt", "sp=er14,pop qr8", "sp=er14,pop qr8,pop qr0", "sp=er14,pop er14",
+        "sp=er6,pop er8", "sp=er14,pop xr12", "sp=er14,pop qr8,pop er6", "sp+=6,pop qr8",
+        "sp+=50,pop qr8", "sp+=20,pop qr8", "sp+=30,pop qr8", "sp+=30,pop er14", "sp+=2,r0=0",
+        "sp+=20,pop xr12", "sp+=10,pop er12", "sp+=60,pop xr8", "sp+=4,pop xr8", "sp+=64,pop er6,pop qr8",
+        "sp+=4,pop qr8,pop xr4", "sp+=40,pop qr8,pop xr4", "sp+=60,pop qr8,pop xr4", "sp+=50,pop qr8,pop xr4",
+        "sp+=50,pop xr4,pop qr8", "sp+=120,pop qr8,pop xr4", "sp+=2,pop xr4,pop qr8", "sp+=120,pop xr8",
+        "sp+=2,r0=1,pop er8", "sp+=32,r2=r0,pop xr8"
+    ]);
+
+    // CHỈ gộp POP thuần tuý
+    function isPurePopGadget(name) {
+        if (!name) return false;
+        return /^pop\s+[a-z0-9]+$/i.test(name.trim());
+    }
+
+    function getPopSizes(gadgetName) {
+        if (!gadgetName) return null;
+        let pops = [];
+        let regex = /pop\s+([^,]+(?:,[^,]+)*)/gi;
+        let match;
+        while ((match = regex.exec(gadgetName)) !== null) {
+            let popPart = match[1];
+            let tokens = popPart.split(',');
+            for (let token of tokens) {
+                token = token.trim();
+                if (token === '' || token === 'rt' || token === 'pop' || token === 'sp') continue;
+                if (token === 'ea') pops.push(2);
+                else if (token === 'pc') pops.push(2);
+                else if (token === 'psw') pops.push(1);
+                else if (token.startsWith('qr')) { for (let i = 0; i < 4; i++) pops.push(2); }
+                else if (token.startsWith('xr')) { for (let i = 0; i < 2; i++) pops.push(2); }
+                else if (token.startsWith('er')) pops.push(2);
+                else if (token.startsWith('r')) pops.push(1);
+            }
+        }
+        return pops.length ? pops : null;
+    }
+
+    function getPopBytesCount(name) {
+        let sizes = getPopSizes(name);
+        if (!sizes) return 0;
+        return sizes.reduce((a, b) => a + b, 0);
+    }
+
+    function getPopRegisters(name) {
+        let regs = [];
+        let regex = /pop\s+([a-z0-9]+)/gi;
+        let match;
+        while ((match = regex.exec(name)) !== null) { regs.push(match[1]); }
+        return regs;
+    }
+
+    const MIN_VALID_CALL_ADDR = 0x8000;
+
+    function normalizeAddress(addr) {
+        if (addr === 0x09c21) return 0x09c20;
+        if (addr === 0x0947e) return 0x0947c;
+        if ((addr & 1) && addrToName.has(addr - 1)) return addr - 1;
+        return addr;
+    }
+
+    function hexToBytes(hexStr) {
+        let clean = hexStr.replace(/\s+/g, '');
+        if (!clean) return [];
+        if (clean.length % 2) clean = clean.slice(0, -1);
+        let bytes = [];
+        for (let i = 0; i < clean.length; i += 2) bytes.push(parseInt(clean.substr(i,2),16));
+        return bytes;
+    }
+
+    const valueToName = new Map([
+        [0x0180, "key_shift"], [0x0280, "key_alpha"], [0x1080, "key_menu"],
+        [0x0480, "key_up"], [0x0840, "key_down"], [0x0440, "key_left"], [0x0880, "key_right"],
+        [0x0140, "key_optn"], [0x0240, "key_calc"], [0x1040, "key_intg"], [0x2040, "key_x"],
+        [0x0120, "key_frac"], [0x0220, "key_sqrt"], [0x0420, "key_sqr"], [0x0820, "key_power"],
+        [0x1020, "key_logb"], [0x2020, "key_inx"], [0x0110, "key_neg"], [0x0210, "key_deg"],
+        [0x0410, "key_inv"], [0x0810, "key_sin"], [0x1010, "key_cos"], [0x2010, "key_tan"],
+        [0x0108, "key_sto"], [0x0208, "key_eng"], [0x0408, "key_lpar"], [0x0808, "key_rpar"],
+        [0x1008, "key_std"], [0x2008, "key_addm"], [0x4010, "key_0"], [0x0101, "key_1"],
+        [0x0201, "key_2"], [0x0401, "key_3"], [0x0102, "key_4"], [0x0202, "key_5"],
+        [0x0402, "key_6"], [0x0104, "key_7"], [0x0204, "key_8"], [0x0404, "key_9"],
+        [0x4008, "key_dot"], [0x0804, "key_del"], [0x1004, "key_ac"], [0x4001, "key_exe"],
+        [0x4002, "key_ans"], [0x4004, "key_exp"], [0x0801, "key_add"], [0x1001, "key_sub"],
+        [0x0802, "key_mul"], [0x1002, "key_div"],
+        [0x83DA, "adrcvtkey"], [0xD000, "reg0"], [0xD009, "reg0.9"], [0xD110, "modifiers"],
+        [0xD111, "mode"], [0xD112, "submode"], [0xD11A, "num_format"], [0xD11B, "num_format_i"],
+        [0xD11D, "angle_unit"], [0xD138, "draw_mode"], [0xD180, "input_range"],
+        [0xD318, "unstable_char"], [0xD31A, "var_m"], [0xD324, "var_ans"], [0xD32E, "var_a"],
+        [0xD338, "var_b"], [0xD342, "var_c"], [0xD34C, "var_d"], [0xD356, "var_e"],
+        [0xD360, "var_f"], [0xD36A, "var_x"], [0xD374, "var_y"], [0xD37E, "var_preans"],
+        [0xD388, "var_z"], [0xD392, "calc_history"], [0xD139, "current_screen_buffer"],
+        [0xDDD4, "screen_buffer"], [0xD137, "font_size"], [0xD113, "cursor_noflash"],
+        [0xDBD0, "magic_string"]
+    ]);
+
+    const tokensDict = {
+        "𝒊": 0x20, "𝒆": 0x21, "𝜋": 0x22, "pi": 0x22, ":": 0x23, "$": 0x24, "?": 0x25, ",": 0x2c, "x10^": 0x2d, ".": 0x2e,
+        "0": 0x30,"1": 0x31,"2": 0x32,"3": 0x33,"4": 0x34,"5": 0x35,"6": 0x36,"7": 0x37,"8": 0x38,"9": 0x39,
+        "𝗔": 0x3a,"𝗕": 0x3b,"𝗖": 0xae,"𝗗": 0x3d,"𝗘": 0x3e,"𝗙": 0x3f,
+        "M": 0x40,"Ans": 0x41,"A": 0x42,"B": 0x43,"C": 0x44,"D": 0x45,"E": 0x46,"F": 0x47,
+        "x": 0x48,"y": 0x49,"PreAns": 0x4a,"z": 0x4b,"𝜃": 0x4c,
+        "∑(": 0x50,"∫(": 0x51,"d/d𝒙(": 0x52,"∏(": 0x53,
+        "Min(": 0x58,"Max(": 0x59,"Mean(": 0x5a,"Sum(": 0x5b,
+        "(": 0x60,"P(": 0x61,"Q(": 0x62,"R(": 0x63,
+        "Not(": 0x64,"Neg(": 0x65,"Conjg(": 0x66,"Arg(": 0x67,"Abs(": 0x68,"Rnd(": 0x69,"Det(": 0x6a,"Trn(": 0x6b,
+        "sinh(": 0x6c,"cosh(": 0x6d,"tanh(": 0x6e,"sinh^-1(": 0x6f,"cosh^-1(": 0x70,"tanh^-1(": 0x71,
+        "𝒆^(": 0x72,"^(": 0x73,"√(": 0x74,"ln(": 0x75,"³√(": 0x76,
+        "sin(": 0x77,"cos(": 0x78,"tan(": 0x79,"sin^-1(": 0x7a,"cos^-1(": 0x7b,"tan^-1(": 0x7c,
+        "log(": 0x7d,"Pol(": 0x7e,"Rec(": 0x7f,
+        "Int(": 0x83,"Intg(": 0x84,"Ref(": 0x85,"Rref(": 0x86,"RanInt#(": 0x87,"GCD(": 0x88,"LCM(": 0x89,"RndFix(": 0x8a,
+        "ReP(": 0x8f,"ImP(": 0x90,"Identity(": 0x91,"UnitV(": 0x92,"Angle(": 0x93,
+        "or": 0xa0,"xor": 0xa1,"xnor": 0xa2,"and": 0xa3,
+        "=": 0xa5,"+": 0xa6,"-": 0xa7,"×": 0xa8,"÷": 0xa9,"÷R": 0xaa,"⋅": 0xab,"∠": 0xac,"𝗣": 0xad,
+        "": 0xb8,"": 0xb9,"₁": 0xba,"₂": 0xbb,
+        "−": 0xc0,"b": 0xc1,"o": 0xc2,"d": 0xc3,"h": 0xc4,
+        "⌟": 0xc8,"^(": 0xc9,"x√(": 0xca,
+        ")": 0xd0,"▸t": 0xd1,"▸a+b𝒊": 0xd2,"▸r∠𝜃": 0xd3,
+        "": 0xd4,"²": 0xd5,"³": 0xd6,"%": 0xd7,"!": 0xd8,
+        "°": 0xd9,"ʳ": 0xda,"ᵍ": 0xdb,"▫": 0xdc,
+        "𝐄": 0xdd,"𝐏": 0xde,"𝐓": 0xdf,
+        "𝐆": 0xe0,"𝐌": 0xe1,"𝐤": 0xe2,"𝐦": 0xe3,"𝝁": 0xe4,"𝐧": 0xe5,"𝐩": 0xe6,"𝐟": 0xe7,
+        "▸Simp": 0xe9,
+        "i": 0x20, "e": 0x21, "theta": 0x4c, "sum(": 0x50, "int(": 0x51, "prod(": 0x53,
+        "d/dx(": 0x52, "sqrt(": 0x74, "cbrt(": 0x76, "e^(": 0x72, "*": 0xa8, "/": 0xa9,
+        "/R": 0xaa, ".mul": 0xab, "angle": 0xac, "-neg": 0xc0, "floor": 0xc8, "to_t": 0xd1,
+        "to_a+bi": 0xd2, "to_rtheta": 0xd3, "deg_shift": 0xd4, "^2": 0xd5, "^3": 0xd6,
+        "deg": 0xd9, "rad": 0xda, "grad": 0xdb, "box": 0xdc, "E_const": 0xdd, "P_const": 0xde,
+        "T_const": 0xdf, "G": 0xe0, "M_big": 0xe1, "k": 0xe2, "m": 0xe3, "mu": 0xe4,
+        "n": 0xe5, "p": 0xe6, "f": 0xe7, "Simp": 0xe9
+    };
+    
+    const hexToToken = {};
+    for (let k in tokensDict) {
+        if (!hexToToken[tokensDict[k]]) {
+            hexToToken[tokensDict[k]] = k; 
+        }
+    }
+
+    function formatAsToken(bytes) {
+        let parts = [];
+        let inCalc = false;
+        let currentCalc = "";
+        for (let b of bytes) {
+            if (hexToToken[b]) {
+                if (!inCalc) { inCalc = true; currentCalc = ""; }
+                currentCalc += hexToToken[b];
+            } else {
+                if (inCalc) { parts.push(`calc "${currentCalc}"`); inCalc = false; }
+                parts.push(`0x${b.toString(16).padStart(2,'0')}`);
+            }
+        }
+        if (inCalc) parts.push(`calc "${currentCalc}"`);
+        return parts.join("\n");
+    }
+
+    function parseToItems(bytes, startAddrDest, startAddrSrc) {
+        let items = [];
+        let offset = 0;
+        let i = 0;
+        while (i < bytes.length) {
+            let ramAddrDest = startAddrDest + offset;
+            let ramAddrSrc = startAddrSrc + offset;
+            if (i + 3 < bytes.length) {
+                let zz = bytes[i], yy = bytes[i+1], third = bytes[i+2], fourth = bytes[i+3];
+                if (third >= 0x30 && third <= 0x39 && fourth === 0x30) {
+                    let X = third - 0x30;
+                    let rawAddr = (X << 16) | (yy << 8) | zz;
+                    if (rawAddr === 0x03030) {
+                        items.push({ type: 'data', hexBytes: [zz], value: zz, ramAddrDest, ramAddrSrc, viewMode: 'auto' });
+                        offset++;
+                        items.push({ type: 'data', hexBytes: [yy], value: yy, ramAddrDest: startAddrDest+offset, ramAddrSrc: startAddrSrc+offset, viewMode: 'auto' });
+                        i += 2; offset++;
+                        continue;
+                    }
+                    if (rawAddr < MIN_VALID_CALL_ADDR) {
+                        for (let b of [zz, yy, third, fourth]) {
+                            items.push({ type: 'data', hexBytes: [b], value: b, ramAddrDest: startAddrDest+offset, ramAddrSrc: startAddrSrc+offset, viewMode: 'auto' });
+                            offset++;
+                        }
+                        i += 4;
+                        continue;
+                    }
+                    let fixedAddr = normalizeAddress(rawAddr);
+                    let name = addrToName.get(fixedAddr);
+                    items.push({
+                        type: 'call',
+                        hexBytes: [zz, yy, third, fourth],
+                        addr: fixedAddr,
+                        name: name || null,
+                        popGrouped: autoGroupPop && isPurePopGadget(name),
+                        ramAddrDest,
+                        ramAddrSrc
+                    });
+                    i += 4;
+                    offset += 4;
+                    
+                    if (autoPopData && name && !specialNoPopGadgets.has(name)) {
+                        let popSizes = getPopSizes(name);
+                        if (popSizes && popSizes.length > 0) {
+                            let totalBytes = popSizes.reduce((a,b) => a+b, 0);
+                            if (i + totalBytes <= bytes.length) {
+                                for (let sz of popSizes) {
+                                    for (let bi = 0; bi < sz; bi++) {
+                                        const b = bytes[i];
+                                        items.push({
+                                            type: 'data',
+                                            hexBytes: [b],
+                                            value: b,
+                                            ramAddrDest: startAddrDest + offset,
+                                            ramAddrSrc: startAddrSrc + offset,
+                                            viewMode: 'auto'
+                                        });
+                                        i++; offset++;
+                                    }
+                                }
+                                continue;
+                            }
+                        }
+                    }
+                    continue;
+                }
+            }
+            items.push({ type: 'data', hexBytes: [bytes[i]], value: bytes[i], ramAddrDest, ramAddrSrc, viewMode: 'auto' });
+            i++; offset++;
+        }
+        return items;
+    }
+
+    function addLabelReferences(items) {
+        let addrToItemIdx = new Map();
+        for (let idx = 0; idx < items.length; idx++) {
+            const it = items[idx];
+            if (it.type === 'label') continue;
+            let size = (it.type === 'call') ? 4 : (it.hexBytes ? it.hexBytes.length : 1);
+            for (let b = 0; b < size; b++) {
+                addrToItemIdx.set(it.ramAddrDest + b, { idx: idx, offset: b, isSrc: false });
+                addrToItemIdx.set(it.ramAddrSrc + b, { idx: idx, offset: b, isSrc: true });
+            }
+        }
+
+        let labelCounter = 1;
+        let labelMap = new Map(); // baseAddr -> { name, insertBefore }
+
+        for (let idx = 0; idx < items.length - 1; idx++) {
+            const it0 = items[idx];
+            const it1 = items[idx + 1];
+            if (it0.type !== 'data' || it1.type !== 'data') continue;
+            if (it0.hexBytes.length !== 1 || it1.hexBytes.length !== 1) continue;
+            
+            it0.labelRef = null;
+            it1.labelSecond = false;
+            
+            if (!labelMode) continue;
+
+            const val = (it1.value << 8) | it0.value;
+            let target = addrToItemIdx.get(val);
+            if (!target) continue;
+            
+            let isSrc = target.isSrc;
+            let targetItem = items[target.idx];
+            let size = targetItem.hexBytes ? targetItem.hexBytes.length : 1;
+            if (targetItem.type === 'call') size = 4;
+
+            let baseAddr;
+            let insertBefore;
+            let offsetFromLabel;
+
+            if (target.offset === 0) {
+                // Trỏ đúng đỉnh Gadget/Data
+                baseAddr = targetItem.ramAddrDest;
+                insertBefore = target.idx;
+                offsetFromLabel = 0;
+            } else {
+                // Trỏ lệch giữa Gadget (ví dụ: nhảy tránh phần pop đầu)
+                // Đẩy Label xuống sau Gadget, Offset sẽ mang số âm
+                baseAddr = targetItem.ramAddrDest + size;
+                insertBefore = target.idx + 1;
+                offsetFromLabel = target.offset - size; 
+            }
+
+            if (!labelMap.has(baseAddr)) { 
+                let customName = customLabels.get(baseAddr);
+                labelMap.set(baseAddr, { name: customName || `label${labelCounter++}`, insertBefore }); 
+            }
+            
+            const labelInfo = labelMap.get(baseAddr);
+            it0.labelRef = { label: labelInfo.name, isSrc: isSrc, originalValue: val, additionalOffset: offsetFromLabel };
+            it1.labelSecond = true; 
+            idx++; 
+        }
+
+        if (labelMode) {
+            let labelItems = [];
+            for (let [addr, info] of labelMap.entries()) {
+                if (info.insertBefore !== undefined) { 
+                    labelItems.push({ type: 'label', label: info.name, insertBefore: info.insertBefore, addr: addr }); 
+                }
+            }
+            labelItems.sort((a,b) => b.insertBefore - a.insertBefore);
+            for (let li of labelItems) { items.splice(li.insertBefore, 0, { type: 'label', label: li.label, addr: li.addr }); }
+
+            let merged = false;
+            do {
+                merged = false;
+                for (let i = 0; i < items.length - 1; i++) {
+                    if (items[i].type === 'label' && items[i+1].type === 'label') {
+                        let keepLabel = items[i].label;
+                        let removeLabel = items[i+1].label;
+                        items.splice(i+1, 1);
+                        for (let it of items) {
+                            if (it.type === 'data' && it.labelRef && it.labelRef.label === removeLabel) {
+                                it.labelRef.label = keepLabel;
+                            }
+                        }
+                        merged = true; break;
+                    }
+                }
+            } while (merged);
+        }
+
+        return items;
+    }
+
+    function resequenceLabels(items) {
+        let oldToNew = new Map();
+        let counter = 1;
+        for (let it of items) {
+            if (it.type === 'label' && !oldToNew.has(it.label)) {
+                if (customLabels.has(it.addr) && customLabels.get(it.addr) === it.label) {
+                    oldToNew.set(it.label, it.label);
+                } else {
+                    oldToNew.set(it.label, `label${counter++}`);
+                }
+            }
+        }
+        for (let it of items) {
+            if (it.type === 'label') it.label = oldToNew.get(it.label) || it.label;
+            if (it.type === 'data' && it.labelRef) {
+                it.labelRef.label = oldToNew.get(it.labelRef.label) || it.labelRef.label;
+            }
+        }
+        return items;
+    }
+
+    function saveHistory() {
+        try {
+            historyStack.push(JSON.parse(JSON.stringify(currentItems)));
+            undoBtn.style.display = 'inline-block';
+        } catch (e) {
+            console.error("Save history failed", e);
+        }
+    }
+
+    undoBtn.onclick = () => {
+        if (historyStack.length > 0) {
+            currentItems = historyStack.pop();
+            if (historyStack.length === 0) undoBtn.style.display = 'none';
+            refreshOutput();
+            setStatus("↩️ Undid last action");
+        }
+    };
+
+    function updateStats(bytes, items) { 
+        document.getElementById('statsMsg').textContent = `byte: ${bytes} | items: ${items.length}`; 
+    }
+
+    function setStatus(text, isError = false) {
+        const statusSpan = document.getElementById('statusMsg');
+        statusSpan.textContent = text;
+        statusSpan.style.color = isError ? '#d32f2f' : 'var(--text-main)';
+        setTimeout(() => { if (statusSpan.textContent === text && !isError) statusSpan.style.color = 'var(--text-main)'; }, 2000);
+    }
+
+    function fmtAddr(n) { return '0x' + n.toString(16).toLowerCase(); }
+
+    function buildHexStr(it) {
+        const byteStr = it.hexBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+        if (hexMode === 'hex') return `hex ${byteStr}`;
+        const reversed = [...it.hexBytes].reverse().map(b => b.toString(16).padStart(2,'0')).join('');
+        return `0x${reversed.toUpperCase()}`;
+    }
+
+    function getDataDisplay(it) {
+        if (it.viewMode === 'hex') return buildHexStr(it);
+
+        if (labelMode && it.labelRef) {
+            const ref = it.labelRef;
+            let offset = ref.additionalOffset || 0;
+            if (ref.isSrc) offset += (currentStartAddrSrc - currentStartAddrDest);
+
+            let dynShift = window.currentLabelShifts[ref.label] || 0;
+            offset += dynShift;
+
+            let offsetStr = offset.toString();
+            // Thêm dấu + cho các offset nhỏ gọn (như +6, +4), bỏ dấu + cho các offset lớn như 4784 để tối giản
+            if (offset > 0 && offset < 1000) {
+                offsetStr = '+' + offset;
+            }
+
+            if (offset === 0) return `adr_of ${ref.label}`;
+            return `adr_of [${offsetStr}] ${ref.label}`;
+        }
+
+        if (translateNames && valueToName.has(it.value) && it.hexBytes.length === 2) {
+            return valueToName.get(it.value);
+        }
+
+        return buildHexStr(it);
+    }
+
+    function convertCallToHex(callItem) {
+        const idx = currentItems.indexOf(callItem);
+        if (idx === -1) return;
+        const newItems = [];
+        for (let j = 0; j < 4; j++) {
+            newItems.push({
+                type: 'data',
+                hexBytes: [callItem.hexBytes[j]],
+                value: callItem.hexBytes[j],
+                ramAddrDest: callItem.ramAddrDest + j,
+                ramAddrSrc: callItem.ramAddrSrc + j,
+                viewMode: 'auto'
+            });
+        }
+        currentItems.splice(idx, 1, ...newItems);
+        refreshOutput();
+    }
+
+    function canGroupPop(items, idx) {
+        const it = items[idx];
+        if (it.type !== 'call' || !isPurePopGadget(it.name) || !it.popGrouped) return false;
+        let totalBytes = getPopBytesCount(it.name);
+        if (totalBytes === 0) return false;
+        let b = 0;
+        for (let j = idx + 1; j < items.length; j++) {
+            if (items[j].type === 'label') continue; 
+            if (items[j].type === 'data') b += items[j].hexBytes.length;
+            else return false;
+            if (b >= totalBytes) return true;
+        }
+        return false;
+    }
+
+    function buildDisplayItems(items, isSubCall = false) {
+        if (!isSubCall) {
+            window.currentLabelShifts = {};
+        }
+        const disp = [];
+        let i = 0;
+        
+        // Pass 1: Tính toán Shift ảo cho Label nếu nằm giữa POP
+        while (i < items.length) {
+            let it = items[i];
+            if (it.type === 'call' && canGroupPop(items, i)) {
+                let totalBytes = getPopBytesCount(it.name);
+                let b = 0;
+                let j = i + 1;
+                while (j < items.length && b < totalBytes) {
+                    if (items[j].type === 'label') {
+                        // Tính toán độ dời lên phía trước POP Group (để bù trừ vào các adr_of)
+                        window.currentLabelShifts[items[j].label] = items[j].addr - it.ramAddrDest;
+                    } else if (items[j].type === 'data') {
+                        b += items[j].hexBytes.length;
+                    }
+                    j++;
+                }
+            }
+            i++;
+        }
+
+        // Pass 2: Trải phẳng Display List
+        i = 0;
+        while (i < items.length) {
+            const it = items[i];
+            
+            if (it.type === 'label') {
+                if (labelMode) disp.push({ kind: 'label', item: it, idx: i });
+                i++;
+                continue;
+            }
+            
+            if (it.type === 'call') {
+                if (canGroupPop(items, i)) {
+                    let totalBytes = getPopBytesCount(it.name);
+                    let regs = getPopRegisters(it.name);
+                    let consumedItems = [];
+                    let skippedLabels = [];
+                    let j = i + 1;
+                    let b = 0;
+                    while (j < items.length && b < totalBytes) {
+                        if (items[j].type === 'data') {
+                            consumedItems.push(items[j]);
+                            b += items[j].hexBytes.length;
+                        } else if (items[j].type === 'label') {
+                            skippedLabels.push(items[j]);
+                        }
+                        j++;
+                    }
+
+                    // Render các Label bị dời trước Pop Group
+                    if (labelMode) {
+                        for (let lbl of skippedLabels) {
+                            disp.push({ kind: 'label', item: lbl, idx: -1 });
+                        }
+                    }
+
+                    disp.push({ kind: 'popgroup', item: it, consumedItems, regs, idx: i });
+                    i = j; 
+                    continue;
+                } else {
+                    disp.push({ kind: 'call', item: it, idx: i });
+                    i++;
+                    continue;
+                }
+            }
+            
+            if (it.labelRef) {
+                if (labelMode) {
+                    disp.push({ kind: 'labelref', item: it, item2: items[i+1], idx: i });
+                    i += 2;
+                    continue;
+                } else {
+                    disp.push({ kind: 'data2', item: it, item2: items[i+1], idx: i });
+                    i += 2;
+                    continue;
+                }
+            }
+            
+            if (it.labelSecond) { i++; continue; }
+            
+            const next = items[i + 1];
+            if (next && next.type === 'data' && !next.labelSecond && !next.labelRef) {
+                disp.push({ kind: 'data2', item: it, item2: next, idx: i });
+                i += 2;
+            } else {
+                disp.push({ kind: 'data1', item: it, idx: i });
+                i++;
+            }
+        }
+        return disp;
+    }
+
+    function isLabelDataOnly(items, labelIdx) {
+        if (labelIdx === -1) return false;
+        let i = labelIdx + 1;
+        while (i < items.length) {
+            if (items[i].type === 'label') break; 
+            if (items[i].type === 'call') return false;
+            i++;
+        }
+        return true;
+    }
+
+    function formatPopGroupAssignment(regs, consumedItems) {
+        let subDisp = buildDisplayItems(consumedItems, true);
+        let valuesStr = subDisp.map(d => {
+            let it;
+            if (d.kind === 'labelref') return getDataDisplay(d.item).split('#')[0].trim();
+            if (d.kind === 'data2') {
+                it = { hexBytes: [...d.item.hexBytes, ...d.item2.hexBytes], value: (d.item2.value << 8) | d.item.value, labelRef: null, viewMode: d.item.viewMode };
+            } else {
+                it = d.item;
+            }
+            return getDataDisplay(it);
+        }).join(', ');
+        
+        return `${regs.join(', ')} = ${valuesStr}`;
+    }
+
+    const collapsedLabels = new Set();
+    const collapsedViewMode = {}; 
+
+    function makeCollapseBtn(labelName, container, labelLineDiv) {
+        const btn = document.createElement('button');
+        btn.className = 'toggle-call-btn';
+        btn.style.background = 'transparent';
+        btn.style.border = 'none';
+        btn.style.color = 'var(--text-muted)';
+        btn.style.cursor = 'pointer';
+        btn.style.fontSize = '10px';
+        btn.title = 'Gộp hex thành một dòng';
+        btn.textContent = collapsedLabels.has(labelName) ? '▶' : '▼';
+        btn.onclick = (e) => {
+            e.stopPropagation();
+            if (collapsedLabels.has(labelName)) collapsedLabels.delete(labelName);
+            else collapsedLabels.add(labelName);
+            renderDetailedHtml();
+        };
+        return btn;
+    }
+
+    function renderDetailedHtml() {
+        const container = document.createElement('div');
+        const dispItems = buildDisplayItems(currentItems);
+        let i = 0;
+        
+        while (i < dispItems.length) {
+            const d = dispItems[i];
+
+            if (d.kind === 'label') {
+                const it = d.item;
+                const isDataOnly = isLabelDataOnly(currentItems, d.idx);
+                const isCollapsed = collapsedLabels.has(it.label);
+
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'gadget-line';
+                lineDiv.style.paddingLeft = '0';
+                
+                if (isDataOnly) lineDiv.appendChild(makeCollapseBtn(it.label, container, lineDiv));
+                
+                const labelSpan = document.createElement('span');
+                labelSpan.className = 'label-name';
+                labelSpan.textContent = `${it.label}:`;
+                lineDiv.appendChild(labelSpan);
+                
+                // Nút Edit Label Inline
+                const editBtn = document.createElement('button');
+                editBtn.className = 'action-btn';
+                editBtn.textContent = '✏️';
+                editBtn.style.padding = '1px 4px';
+                editBtn.onclick = (e) => {
+                    e.stopPropagation();
+                    const input = document.createElement('input');
+                    input.type = 'text';
+                    input.value = it.label;
+                    input.className = 'label-edit-input';
+                    input.style.width = Math.max(100, it.label.length * 8) + 'px';
+                    
+                    input.onkeydown = (ev) => {
+                        if (ev.key === 'Enter') {
+                            ev.preventDefault();
+                            let newName = input.value.trim();
+                            if (/[\s\n]/.test(newName)) {
+                                alert("Tên label không được chứa dấu cách hoặc xuống dòng!");
+                                return;
+                            }
+                            if (newName && newName !== it.label) {
+                                saveHistory();
+                                let oldName = it.label;
+                                
+                                customLabels.set(it.addr, newName);
+                                saveState();
+                                
+                                currentItems.forEach(item => {
+                                    if (item.type === 'label' && item.label === oldName) item.label = newName;
+                                    if (item.labelRef && item.labelRef.label === oldName) item.labelRef.label = newName;
+                                });
+                                if (window.currentLabelShifts[oldName] !== undefined) {
+                                    window.currentLabelShifts[newName] = window.currentLabelShifts[oldName];
+                                    delete window.currentLabelShifts[oldName];
+                                }
+                                if (collapsedLabels.has(oldName)) {
+                                    collapsedLabels.delete(oldName);
+                                    collapsedLabels.add(newName);
+                                }
+                            }
+                            refreshOutput(); 
+                        } else if (ev.key === 'Escape') {
+                            refreshOutput(); 
+                        }
+                    };
+                    
+                    lineDiv.replaceChild(input, labelSpan);
+                    lineDiv.removeChild(editBtn);
+                    input.focus();
+                };
+                lineDiv.appendChild(editBtn);
+
+                if (showAddrs) {
+                    const locSpan = document.createElement('span');
+                    locSpan.className = 'location';
+                    locSpan.textContent = fmtAddr(it.addr);
+                    lineDiv.appendChild(locSpan);
+                }
+                
+                container.appendChild(lineDiv);
+
+                if (isDataOnly && isCollapsed) {
+                    const rawBytes = [];
+                    let j = d.idx + 1;
+                    while (j < currentItems.length && currentItems[j].type !== 'label') {
+                        rawBytes.push(...currentItems[j].hexBytes);
+                        j++;
+                    }
+                    const hexLine = document.createElement('div');
+                    hexLine.className = 'gadget-line';
+                    hexLine.style.paddingLeft = '16px';
+                    
+                    const badge = document.createElement('span');
+                    badge.className = 'hex-badge';
+                    badge.textContent = rawBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+                    hexLine.appendChild(badge);
+                    
+                    let mode = collapsedViewMode[it.label] || 'hex';
+                    const valSpan = document.createElement('span');
+                    valSpan.className = 'data-name';
+                    if (mode === 'token') valSpan.textContent = formatAsToken(rawBytes);
+                    else valSpan.textContent = 'hex ' + rawBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+                    hexLine.appendChild(valSpan);
+
+                    const btnGroup = document.createElement('span');
+                    btnGroup.style.marginLeft = 'auto';
+
+                    const btnHex = document.createElement('button');
+                    btnHex.className = mode === 'hex' ? 'action-btn active' : 'action-btn';
+                    btnHex.textContent = 'Hex';
+                    btnHex.onclick = () => { collapsedViewMode[it.label] = 'hex'; refreshOutput(); };
+
+                    const btnToken = document.createElement('button');
+                    btnToken.className = mode === 'token' ? 'action-btn active' : 'action-btn';
+                    btnToken.textContent = 'Token';
+                    btnToken.onclick = () => { collapsedViewMode[it.label] = 'token'; refreshOutput(); };
+
+                    btnGroup.append(btnHex, btnToken);
+                    hexLine.appendChild(btnGroup);
+
+                    container.appendChild(hexLine);
+                    i++;
+                    while (i < dispItems.length && dispItems[i].kind !== 'label') i++;
+                    continue;
+                }
+                i++;
+                continue;
+            }
+            
+            if (d.kind === 'popgroup') {
+                const it = d.item;
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'gadget-line';
+                lineDiv.style.paddingLeft = '16px';
+                
+                const badge = document.createElement('span');
+                badge.className = 'hex-badge';
+                badge.textContent = it.hexBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+                lineDiv.appendChild(badge);
+                
+                const valSpan = document.createElement('span');
+                valSpan.className = 'data-name';
+                valSpan.textContent = formatPopGroupAssignment(d.regs, d.consumedItems);
+                lineDiv.appendChild(valSpan);
+                
+                const btnGroup = document.createElement('span');
+                btnGroup.style.marginLeft = 'auto';
+                
+                const ungrpBtn = document.createElement('button');
+                ungrpBtn.className = 'action-btn active';
+                ungrpBtn.textContent = 'Ungroup';
+                ungrpBtn.onclick = () => { saveHistory(); it.popGrouped = false; refreshOutput(); };
+                btnGroup.appendChild(ungrpBtn);
+
+                if (showAddrs && d.consumedItems && d.consumedItems.length > 0) {
+                    const dataStartItem = d.consumedItems[0];
+                    const dataEndItem = d.consumedItems[d.consumedItems.length - 1];
+                    const locSpan = document.createElement('span');
+                    locSpan.className = 'location';
+                    locSpan.textContent = `(${fmtAddr(it.ramAddrDest)}->${fmtAddr(dataEndItem.ramAddrDest)}|${fmtAddr(it.ramAddrSrc)}->${fmtAddr(dataEndItem.ramAddrSrc)})`;
+                    btnGroup.appendChild(locSpan);
+                }
+                
+                lineDiv.appendChild(btnGroup);
+                container.appendChild(lineDiv);
+                i++; continue;
+            }
+
+            if (d.kind === 'call') {
+                const it = d.item;
+                const lineDiv = document.createElement('div');
+                lineDiv.className = 'gadget-line';
+                lineDiv.style.paddingLeft = '16px';
+                
+                const badge = document.createElement('span');
+                badge.className = 'hex-badge';
+                badge.textContent = it.hexBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+                lineDiv.appendChild(badge);
+                
+                const addrStr = it.addr.toString(16).toUpperCase().padStart(5, '0');
+                const nameSpan = document.createElement('span');
+                nameSpan.className = it.name ? 'gadget-name' : 'gadget-name-unknown';
+                nameSpan.textContent = it.name ? it.name : `call ${addrStr}`;
+                lineDiv.appendChild(nameSpan);
+
+                const btnGroup = document.createElement('span');
+                btnGroup.style.marginLeft = 'auto';
+
+                if (!it.name) {
+                    const hexBtn = document.createElement('button');
+                    hexBtn.className = 'action-btn';
+                    hexBtn.textContent = 'To Hex';
+                    hexBtn.onclick = () => { saveHistory(); convertCallToHex(it); };
+                    btnGroup.appendChild(hexBtn);
+                } else if (autoGroupPop && isPurePopGadget(it.name) && !it.popGrouped) {
+                    const grpBtn = document.createElement('button');
+                    grpBtn.className = 'action-btn';
+                    grpBtn.textContent = 'Group Pop';
+                    grpBtn.onclick = () => { saveHistory(); it.popGrouped = true; refreshOutput(); };
+                    btnGroup.appendChild(grpBtn);
+                }
+
+                if (showAddrs) {
+                    const locSpan = document.createElement('span');
+                    locSpan.className = 'location';
+                    locSpan.textContent = `(${fmtAddr(it.ramAddrDest)}|${fmtAddr(it.ramAddrSrc)})`;
+                    btnGroup.appendChild(locSpan);
+                }
+                
+                lineDiv.appendChild(btnGroup);
+                container.appendChild(lineDiv);
+                i++; continue;
+            }
+
+            const it = d.item;
+            const it2 = d.item2;
+            const lineDiv = document.createElement('div');
+            lineDiv.className = 'gadget-line';
+            lineDiv.style.paddingLeft = '16px';
+
+            const displayBytes = d.kind === 'data2' || d.kind === 'labelref' ? [...it.hexBytes, ...it2.hexBytes] : [...it.hexBytes];
+            const badge = document.createElement('span');
+            badge.className = 'hex-badge';
+            badge.textContent = displayBytes.map(b => b.toString(16).padStart(2,'0')).join(' ');
+            lineDiv.appendChild(badge);
+
+            let display;
+            let fakeItem;
+            if (d.kind === 'labelref') {
+                display = getDataDisplay(it); 
+            } else if (d.kind === 'data2') {
+                fakeItem = { hexBytes: displayBytes, value: (it2.value << 8) | it.value, labelRef: null, viewMode: it.viewMode };
+                display = getDataDisplay(fakeItem);
+            } else {
+                display = getDataDisplay(it);
+            }
+
+            const valSpan = document.createElement('span');
+            valSpan.className = 'data-name';
+            valSpan.textContent = display;
+            lineDiv.appendChild(valSpan);
+            
+            const btnGroup = document.createElement('span');
+            btnGroup.style.marginLeft = 'auto';
+
+            let targetItem = d.kind === 'data2' ? fakeItem : it;
+            let isTranslatable = false;
+            
+            if (translateNames && targetItem.hexBytes && targetItem.hexBytes.length === 2 && valueToName.has(targetItem.value)) {
+                isTranslatable = true;
+            }
+            if (labelMode && targetItem.labelRef) {
+                isTranslatable = true;
+            }
+
+            if (isTranslatable) {
+                const toggleFmtBtn = document.createElement('button');
+                toggleFmtBtn.className = 'action-btn';
+                toggleFmtBtn.textContent = (it.viewMode === 'hex') ? 'To Name/Label' : 'To Hex';
+                toggleFmtBtn.onclick = () => {
+                    saveHistory();
+                    let newMode = (it.viewMode === 'hex') ? 'auto' : 'hex';
+                    it.viewMode = newMode;
+                    if(it2) it2.viewMode = newMode;
+                    refreshOutput();
+                };
+                btnGroup.appendChild(toggleFmtBtn);
+            }
+
+            if (showAddrs) {
+                const locSpan = document.createElement('span');
+                locSpan.className = 'location';
+                locSpan.textContent = `(${fmtAddr(it.ramAddrDest)}|${fmtAddr(it.ramAddrSrc)})`;
+                btnGroup.appendChild(locSpan);
+            }
+            
+            lineDiv.appendChild(btnGroup);
+            container.appendChild(lineDiv);
+            i++;
+        }
+        outputListEl.innerHTML = '';
+        outputListEl.appendChild(container);
+    }
+
+    function formatSimple() {
+        const dispItems = buildDisplayItems(currentItems);
+        const lines = [];
+        const indentSpaces = parseInt(document.getElementById('indentInput').value) || 4;
+        const indentStr = ' '.repeat(indentSpaces);
+
+        lines.push(`org 0x${currentStartAddrDest.toString(16).toLowerCase()}`);
+
+        let i = 0;
+        while (i < dispItems.length) {
+            const d = dispItems[i];
+            if (d.kind === 'label') {
+                const it = d.item;
+                const isDataOnly = isLabelDataOnly(currentItems, d.idx);
+                lines.push(`${it.label}:`);
+                if (isDataOnly && collapsedLabels.has(it.label)) {
+                    const rawBytes = [];
+                    let j = d.idx + 1;
+                    while (j < currentItems.length && currentItems[j].type !== 'label') {
+                        rawBytes.push(...currentItems[j].hexBytes);
+                        j++;
+                    }
+                    let mode = collapsedViewMode[it.label] || 'hex';
+                    if (mode === 'token') {
+                        const tokenStrs = formatAsToken(rawBytes).split('\n');
+                        tokenStrs.forEach(s => lines.push(indentStr + s));
+                    } else {
+                        lines.push(indentStr + 'hex ' + rawBytes.map(b => b.toString(16).padStart(2,'0')).join(' '));
+                    }
+                    i++;
+                    while (i < dispItems.length && dispItems[i].kind !== 'label') i++;
+                    continue;
+                }
+            } else if (d.kind === 'popgroup') {
+                lines.push(indentStr + formatPopGroupAssignment(d.regs, d.consumedItems));
+            } else if (d.kind === 'call') {
+                const it = d.item;
+                lines.push(indentStr + (it.name ? it.name : `call ${it.addr.toString(16).toUpperCase().padStart(5,'0')}`));
+            } else if (d.kind === 'labelref') {
+                lines.push(indentStr + getDataDisplay(d.item));
+            } else if (d.kind === 'data2') {
+                const displayBytes = [...d.item.hexBytes, ...d.item2.hexBytes];
+                const fakeItem = { hexBytes: displayBytes, value: (d.item2.value << 8) | d.item.value, labelRef: null, viewMode: d.item.viewMode };
+                lines.push(indentStr + getDataDisplay(fakeItem));
+            } else { 
+                lines.push(indentStr + getDataDisplay(d.item));
+            }
+            i++;
+        }
+        return lines.join('\n');
+    }
+
+    function refreshOutput() {
+        if (!currentItems.length) {
+            outputListEl.innerHTML = '<div style="color:var(--text-muted); padding:12px;">// No data. Enter hex and press DECOMPILE.</div>';
+            updateStats(0, []);
+            return;
+        }
+        if (currentMode === "detail") {
+            renderDetailedHtml();
+        } else {
+            outputListEl.innerText = formatSimple();
+        }
+        updateStats(currentByteCount, currentItems);
+    }
+
+    function decompileAndSet() {
+        let rawHex = document.getElementById('hexInput').value.trim();
+        saveState(); 
+        if (!rawHex) {
+            currentItems = [];
+            currentByteCount = 0;
+            outputListEl.innerHTML = '<div style="color:var(--text-muted); padding:12px;">// Please enter hex program</div>';
+            updateStats(0, []);
+            setStatus("⚠️ No hex input", true);
+            return;
+        }
+        let startAddrDest = parseInt(document.getElementById('startAddrInput').value.trim().toLowerCase(), 16);
+        if (isNaN(startAddrDest)) startAddrDest = 0xd730;
+        let startAddrSrc = parseInt(document.getElementById('backupAddrInput').value.trim().toLowerCase(), 16);
+        if (isNaN(startAddrSrc)) startAddrSrc = 0xe9e0;
+        
+        currentStartAddrDest = startAddrDest;
+        currentStartAddrSrc = startAddrSrc;
+        setStatus("⏳ Decompiling...");
+        
+        historyStack = [];
+        undoBtn.style.display = 'none';
+
+        setTimeout(() => {
+            try {
+                let bytes = hexToBytes(rawHex);
+                if (!bytes.length) throw new Error("Invalid hex bytes");
+                currentByteCount = bytes.length;
+                let items = parseToItems(bytes, startAddrDest, startAddrSrc);
+                items = addLabelReferences(items);
+                items = resequenceLabels(items);
+                currentItems = items;
+                refreshOutput();
+                setStatus("✅ Decompiled successfully");
+            } catch (e) {
+                currentItems = [];
+                currentByteCount = 0;
+                outputListEl.innerHTML = `<div style="color:#d32f2f; padding:12px;">// Error: ${e.message}</div>`;
+                updateStats(0, []);
+                setStatus("❌ Decompile error", true);
+            }
+        }, 10);
+    }
+
+    document.getElementById('decompileBtn').onclick = decompileAndSet;
+    document.getElementById('clearBtn').onclick = () => {
+        document.getElementById('hexInput').value = "";
+        currentItems = [];
+        historyStack = [];
+        undoBtn.style.display = 'none';
+        currentByteCount = 0;
+        outputListEl.innerHTML = '<div style="color:var(--text-muted); padding:12px;">// Press DECOMPILE</div>';
+        updateStats(0, []);
+        saveState();
+        setStatus("🧹 Cleared");
+    };
+    document.getElementById('copyBtn').onclick = () => {
+        let txt = currentMode === "detail" ? formatSimple() : outputListEl.innerText;
+        if (!txt || txt.includes("// Press DECOMPILE") || txt.includes("// No data")) {
+            setStatus("⚠️ Nothing to copy", true);
+            return;
+        }
+        navigator.clipboard.writeText(txt).then(() => setStatus("📋 Copied output")).catch(() => setStatus("❌ Copy failed", true));
+    };
+    document.getElementById('pasteBtn').onclick = async () => {
+        try {
+            let text = await navigator.clipboard.readText();
+            document.getElementById('hexInput').value = text;
+            saveState();
+            setStatus("📌 Pasted from clipboard");
+        } catch { setStatus("⚠️ Cannot read clipboard", true); }
+    };
+
+    function setActiveMode(mode) {
+        currentMode = mode;
+        if (mode === "detail") {
+            document.getElementById('modeDetailBtn').classList.add('active');
+            document.getElementById('modeSimpleBtn').classList.remove('active');
+        } else {
+            document.getElementById('modeSimpleBtn').classList.add('active');
+            document.getElementById('modeDetailBtn').classList.remove('active');
+        }
+        refreshOutput();
+        setStatus(`🔁 Switched to ${mode === "detail" ? "Detailed" : "Simple"} mode`);
+    }
+    document.getElementById('modeDetailBtn').onclick = () => setActiveMode("detail");
+    document.getElementById('modeSimpleBtn').onclick = () => setActiveMode("simple");
+
+    function setPill(pill, on) { pill.classList.toggle('on', on); }
+    const pillLabels   = document.getElementById('pillLabels');
+    const pillAutoPopData = document.getElementById('pillAutoPopData');
+    const pillAutoPop  = document.getElementById('pillAutoPop');
+    const pillNames    = document.getElementById('pillNames');
+    const pillAddrs    = document.getElementById('pillAddrs');
+    const pillHexMode  = document.getElementById('pillHexMode');
+    const pillTheme    = document.getElementById('pillTheme');
+
+    document.getElementById('settingLabels').onclick = () => {
+        labelMode = !labelMode; setPill(pillLabels, labelMode); 
+        
+        saveState(); decompileAndSet();
+        setStatus(labelMode ? "🏷️ Labels ON" : "🏷️ Labels OFF");
+    };
+    document.getElementById('settingAutoPopData').onclick = () => {
+        autoPopData = !autoPopData; setPill(pillAutoPopData, autoPopData); 
+        saveState(); decompileAndSet();
+        setStatus(autoPopData ? "📥 Auto Parse POP Data ON" : "📥 Auto Parse POP Data OFF");
+    };
+    document.getElementById('settingAutoPop').onclick = () => {
+        autoGroupPop = !autoGroupPop; setPill(pillAutoPop, autoGroupPop); 
+        currentItems.forEach(it => {
+            if (it.type === 'call' && isPurePopGadget(it.name)) {
+                it.popGrouped = autoGroupPop;
+            }
+        });
+        saveState(); refreshOutput();
+        setStatus(autoGroupPop ? "📦 Auto POP ON" : "📦 Auto POP OFF");
+    };
+    document.getElementById('settingNames').onclick = () => {
+        translateNames = !translateNames; setPill(pillNames, translateNames); 
+        saveState(); refreshOutput();
+        setStatus(translateNames ? "🗂️ Translate Names ON" : "🗂️ Translate Names OFF");
+    };
+    document.getElementById('settingAddrs').onclick = () => {
+        showAddrs = !showAddrs; setPill(pillAddrs, showAddrs); 
+        saveState(); refreshOutput();
+        setStatus(showAddrs ? "📍 Addresses ON" : "📍 Addresses OFF");
+    };
+    document.getElementById('settingHexMode').onclick = () => {
+        hexMode = hexMode === 'hex' ? '0x' : 'hex'; setPill(pillHexMode, hexMode === '0x'); 
+        document.getElementById('hexModeLabel').style.color = hexMode === 'hex' ? 'var(--accent)' : 'var(--text-muted)';
+        document.getElementById('hexModeLabel2').style.color = hexMode === '0x' ? 'var(--accent)' : 'var(--text-muted)';
+        saveState(); refreshOutput();
+        setStatus(`🔢 Format: ${hexMode}`);
+    };
+    document.getElementById('settingTheme').onclick = (e) => {
+        if(e.target.tagName === 'INPUT') return;
+        isNatureTheme = !isNatureTheme; setPill(pillTheme, isNatureTheme);
+        document.body.className = isNatureTheme ? 'theme-nature' : 'theme-minimal';
+        saveState();
+        setStatus(isNatureTheme ? "🌸 Nature Theme ON" : "🌙 Minimal Theme ON");
+    };
+
+    document.getElementById('indentInput').addEventListener('input', () => { 
+        saveState(); refreshOutput(); 
+    });
+    document.getElementById('hexInput').addEventListener('input', saveState);
+    document.getElementById('startAddrInput').addEventListener('input', saveState);
+    document.getElementById('backupAddrInput').addEventListener('input', saveState);
+
+    const settingsBtn = document.getElementById('settingsBtn');
+    const settingsDropdown = document.getElementById('settingsDropdown');
+    
+    settingsBtn.onclick = (e) => { 
+        e.stopPropagation(); 
+        settingsDropdown.classList.toggle('show'); 
+    };
+    document.addEventListener('click', () => settingsDropdown.classList.remove('show'));
+    settingsDropdown.addEventListener('click', e => e.stopPropagation());
+
+    // --------------------------------------------------------------
+    // KHỞI TẠO TỪ LOCALSTORAGE
+    // --------------------------------------------------------------
+    document.body.className = isNatureTheme ? 'theme-nature' : 'theme-minimal';
+    setPill(pillTheme, isNatureTheme);
+    setPill(pillLabels, labelMode);
+    setPill(pillAutoPopData, autoPopData);
+    setPill(pillAutoPop, autoGroupPop);
+    setPill(pillNames, translateNames);
+    setPill(pillAddrs, showAddrs);
+    setPill(pillHexMode, hexMode === '0x');
+    
+    document.getElementById('hexModeLabel').style.color = hexMode === 'hex' ? 'var(--accent)' : 'var(--text-muted)';
+    document.getElementById('hexModeLabel2').style.color = hexMode === '0x' ? 'var(--accent)' : 'var(--text-muted)';
+
+    document.getElementById('hexInput').value = localStorage.getItem('hexInput') || '';
+    document.getElementById('startAddrInput').value = localStorage.getItem('startAddr') || 'd730';
+    document.getElementById('backupAddrInput').value = localStorage.getItem('backupAddr') || 'e9e0';
+    document.getElementById('indentInput').value = localStorage.getItem('indentStr') || '4';
+
+    if (document.getElementById('hexInput').value.trim() !== '') {
+        decompileAndSet();
+    } else {
+        outputListEl.innerHTML = '<div style="color:var(--text-muted); padding:12px;">// Press DECOMPILE</div>';
+    }
+
+</script>
+
+<!-- PWA Service Worker Registration -->
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('./sw.js')
+        .then((registration) => {
+          console.log('[PWA] ServiceWorker registration successful with scope: ', registration.scope);
+        })
+        .catch((error) => {
+          console.log('[PWA] ServiceWorker registration failed: ', error);
+        });
+    });
+  }
+
+  // Optional: Add to home screen prompt (basic)
+  let deferredPrompt;
+  window.addEventListener('beforeinstallprompt', (e) => {
+    e.preventDefault();
+    deferredPrompt = e;
+    // You can show a custom install button here if desired
+    console.log('[PWA] beforeinstallprompt fired - App can be installed');
+  });
+</script>
+</body>
+</html>
